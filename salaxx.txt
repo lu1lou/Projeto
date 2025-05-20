@@ -1,0 +1,27 @@
+#Conjunto 1 
+Mesa1 Rectangle(Point(22, 40), Point(40, 54))
+Mesa2 Rectangle(Point(22, 68), Point(40, 82))
+Mesa3 Rectangle(Point(22, 96), Point(40, 110))
+Mesa4 Rectangle(Point(44, 40), Point(62, 54))  
+Mesa5 Rectangle(Point(44, 68), Point(62, 82))
+Mesa6 Rectangle(Point(44, 96), Point(62, 110))
+
+#Conjunto 2
+Mesa7 Rectangle(Point(88, 40), Point(106, 54))  
+Mesa8 Rectangle(Point(88, 68), Point(106, 82))
+Mesa9 Rectangle(Point(88, 96), Point(106, 110))
+Mesa10 Rectangle(Point(110, 40), Point(128, 54))  
+Mesa11 Rectangle(Point(110, 68), Point(128, 82))
+Mesa12 Rectangle(Point(110, 96), Point(128, 110))
+
+#Divisores
+Divisor1 Rectangle(Point(40, 20), Point(44, 130))
+Divisor2 Rectangle(Point(106, 20), Point(110, 130))    
+
+#Docking station
+Dock Rectangle(Point(135, 145), Point(145, 150))
+#Zona Coletor de Pratos
+Coletor Rectangle(Point(125, 140), Point(135, 150))
+
+#Saida Pratos
+Saida Rectangle(Point(62, 140), Point(88,150))
