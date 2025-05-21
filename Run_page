@@ -1,0 +1,17 @@
+from graphics import*
+from Sala import Table
+from Sala import RestaurantLayout
+
+def main():
+    "exacutar o programa"
+    restaurant = RestaurantLayout("salaxx.txt")
+    restaurant.run()
+    
+    
+    
+
+    
+
+
+if __name__ == "__main__":
+    main()
