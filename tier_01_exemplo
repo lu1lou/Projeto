@@ -1,0 +1,143 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun May 25 16:16:59 2025
+
+@author: luisl
+"""
+
+from graphics import *
+import time
+
+# 
+def draw_station(win, label, p1, p2, color):
+    rect = Rectangle(p1, p2)
+    rect.setFill(color)
+    rect.draw(win)
+    Text(rect.getCenter(), label).draw(win)
+    return rect
+
+def draw_layout(win):
+    kitchen = draw_station(win, "出餐处", Point(30, 30), Point(100, 90), "lightgreen")
+    standby = draw_station(win, "待命区", Point(30, 310), Point(100, 370), "lightblue")
+    table1 = draw_station(win, "桌子1", Point(380, 30), Point(450, 90), "lightyellow")
+    table2 = draw_station(win, "桌子2", Point(380, 130), Point(450, 190), "lightyellow")
+    table3 = draw_station(win, "桌子3", Point(380, 250), Point(450, 310), "lightyellow")
+    return standby, kitchen, {'桌子1': table1, '桌子2': table2, '桌子3': table3}
+
+def draw_obstacles(win):
+    obs1 = Rectangle(Point(200, 100), Point(250, 200))
+    obs1.setFill("gray")
+    obs1.draw(win)
+    obs2 = Rectangle(Point(180, 250), Point(230, 300))
+    obs2.setFill("gray")
+    obs2.draw(win)
+
+def draw_exit_button(win):
+    button = Rectangle(Point(400, 360), Point(490, 390))
+    button.setFill("red")
+    button.draw(win)
+    label = Text(button.getCenter(), "退出游戏")
+    label.setTextColor("white")
+    label.draw(win)
+    return button
+
+def point_inside(rect, point):
+    return rect.getP1().getX() <= point.getX() <= rect.getP2().getX() and \
+           rect.getP1().getY() <= point.getY() <= rect.getP2().getY()
+
+def move_servant(servant, points, delay=0.006):
+    for i in range(len(points) - 1):
+        start = points[i]
+        end = points[i + 1]
+        dx = end.getX() - start.getX()
+        dy = end.getY() - start.getY()
+        steps = int(max(abs(dx), abs(dy)))
+        for _ in range(steps):
+            servant.move(dx / steps, dy / steps)
+            time.sleep(delay)
+
+def main():
+    win = GraphWin("服务生多桌送餐模拟", 500, 400)
+    win.setBackground("white")
+
+    p1,p2 = Point(130, 340), Point(130, 60)
+    p1.draw(win)
+    p2.draw(win)
+
+
+    standby, kitchen, tables = draw_layout(win)
+    draw_obstacles(win)
+    exit_button = draw_exit_button(win)
+
+    servant = Circle(standby.getCenter(), 10)
+    servant.setFill("blue")
+    servant.draw(win)
+
+    tip = Text(Point(250, 380), "点击任意桌子送餐（支持多次）")
+    tip.draw(win)
+
+    while True:
+        click = win.getMouse()
+
+        if point_inside(exit_button, click):
+            break
+
+        target_table = None
+        for name, rect in tables.items():
+            if point_inside(rect, click):
+                target_table = name
+                break
+
+        if target_table:
+            tip.setText(f"🚶 正在送餐到 {target_table}...")
+
+            # 设置路径（根据不同桌子位置）
+            current_pos = servant.getCenter()
+            path_to_kitchen = [
+                current_pos,          # Onde o servo está agora
+                Point(130, 340),      # Desce para evitar obstáculos
+                Point(130, 60),       # Vai para perto da cozinha
+                kitchen.getCenter(),  # Chega ao centro da cozinha
+            ]
+
+            path_from_kitchen = [
+                kitchen.getCenter(),  # Sai da cozinha
+                Point(130, 60),       # Volta ao ponto de passagem
+            ]
+            
+            if target_table == '桌子1':
+                path_from_kitchen += [Point(280, 60), Point(415, 60)]
+            elif target_table == '桌子2':
+                path_from_kitchen += [Point(280, 60), Point(280, 160), Point(415, 160)]
+            elif target_table == '桌子3':
+                path_from_kitchen += [Point(130, 250), Point(300, 250), Point(415, 280)]
+                
+            # 1. Movimento até a cozinha
+            move_servant(servant, path_to_kitchen)
+            
+            # (Aqui poderia ter uma pausa para "pegar a comida")
+            time.sleep(2)  # Simula o tempo de carregamento
+            
+            # 2. Movimento de volta ao ponto (130, 60)
+            move_servant(servant, path_from_kitchen)
+          
+
+            time.sleep(2)  # 模拟送餐时间
+
+            # 回待命区
+            tip.setText("✅ 送达，返回待命区...")
+            back_path = [
+                servant.getCenter(),
+                Point(280, 340),
+                Point(130, 340),
+                standby.getCenter()
+            ]
+            move_servant(servant, back_path)
+
+            tip.setText("点击桌子继续送餐 / 点退出按钮结束")
+        else:
+            tip.setText("请点击黄色桌子进行送餐")
+
+    win.close()
+
+main()
