@@ -46,7 +46,7 @@ class Waiter:
     def getCenter(self):
         return self.position
     
-    def move_waiter(self, points, delay=0.03):
+    def move_waiter(self, points, delay=0.007):
         for i in range(len(points) - 1):
             start = points[i]
             end = points[i + 1]
@@ -143,7 +143,7 @@ class RestaurantLayout:
         #Botão de saída
         but = Rectangle(Point(66, 0), Point(88, 10))
         but.setFill('red')
-        but_text = Text(Point(75, 5), "Sair")  # Centered in button
+        but_text = Text(Point(77, 5), "Sair")  
         
         # Draw elements
         but.draw(self.window)
@@ -197,7 +197,6 @@ class RestaurantLayout:
         # Carregar layout
         self.load_layout()
            
-        
         # Criar janela
         self.create_window()
         
@@ -212,11 +211,7 @@ class RestaurantLayout:
             click = self.window.getMouse()
             click_x, click_y = click.getX(), click.getY()
             
-            # Verificar se clique foi dentro do botão de saída
-            if 66 <= click_x <= 88 and 0 <= click_y <= 10:
-                self.window.close()
-                break
-            
+
             target_table = None
             for table in self.tables:  # Fixed loop variable name
                 if table.point_inside(click):  # Should be a proper instance method
@@ -225,50 +220,78 @@ class RestaurantLayout:
 
             if target_table:
 
-                # 设置路径（根据不同桌子位置）
+                # caminho para diferentes mesas
                 current_pos = self.waiter.getCenter()
                 
-                path_to_kitchen = [
-                    current_pos,          # Onde o servo está agora
-                    Point(140, 135),      # Desce para evitar obstáculos
-                    Point(75,135),       # Vai para perto da cozinha
-            
-                ]
-                 
-                path_from_kitchen = [
-            
-                    Point(75,135),       # Continuar de onde parou
-                ]
+                #caminho até zona de saida de pratos
+                path_to_kitchen = [current_pos,          # Onde o robot está agora
+                                   Point(140, 135),      # sair de doock
+                                   Point(75,135)]    # Vai para zona de saida de prato
                 
+                path_from_kitchen = [Point(75,135),]     # Continuar de onde parou
+                
+                back_path = [] #caminho de volta
+             
+                #Condição que diefine o percurso do robot
                 if target_table == 'Mesa1':
-                    path_from_kitchen += [Point(11,135), Point(11, 47)]
+                    path_from_kitchen += [Point(11,135), Point(11, 47),Point(18,47),] 
+                    back_path = [Point(18,47), Point(11, 47),Point(11,135), Point(140,135), Point(140, 147)]
                 elif target_table == 'Mesa2':
-                    path_from_kitchen += [Point(0, 0), Point(0, 0), Point(4, 0)]
+                    path_from_kitchen += [Point(11,135), Point(11, 75), Point(18,75)]
+                    back_path = [Point(18,75), Point(11, 75),Point(11,135), Point(140,135), Point(140, 147)]
                 elif target_table == 'Mesa3':
-                    path_from_kitchen += [Point(30, 25), Point(30, 25), Point(15, 28)]
-                    
-                # 1. Movimento até a cozinha
+                    path_from_kitchen += [Point(11,135), Point(11, 103), Point(18,103)]
+                    back_path = [Point(18,103), Point(11, 103),Point(11,135), Point(140,135), Point(140, 147)]
+
+                #caminho para mesas 4,5,6
+                elif target_table == 'Mesa4':
+                    path_from_kitchen += [Point(75,47), Point(68, 47),]
+                    back_path = [Point(68,47), Point(75,47), Point(75, 135), Point(140,135),Point(140, 147)]
+                elif target_table == 'Mesa5':    
+                    path_from_kitchen += [Point(75,75), Point(68, 75),]
+                    back_path = [Point(68,75), Point(75,75), Point(75, 135), Point(140,135),Point(140, 147)]
+                elif target_table == 'Mesa6':
+                    path_from_kitchen += [Point(75,103), Point(68, 103),]
+                    back_path = [Point(68,103), Point(75,103), Point(75, 135), Point(140,135),Point(140, 147)]
+                
+                #caminho para mesas 7,8,9
+                elif target_table == 'Mesa7':
+                    path_from_kitchen += [Point(75,47), Point(82, 47),]
+                    back_path = [Point(82,47), Point(75,47), Point(75, 135), Point(140,135),Point(140, 147)]
+                elif target_table == 'Mesa8':
+                    path_from_kitchen += [Point(75,75), Point(82, 75),]
+                    back_path = [Point(82,75), Point(75,75), Point(75, 135), Point(140,135),Point(140, 147)]
+                elif target_table == 'Mesa9':
+                    path_from_kitchen += [Point(75,103), Point(82, 103),]
+                    back_path = [Point(82,103), Point(75,103), Point(75, 135), Point(140,135),Point(140, 147)]
+                   
+                #caminho para mesas 10,11,12
+                elif target_table == 'Mesa10':
+                    path_from_kitchen += [Point(140,135), Point(140, 47),Point(133, 47),]
+                    back_path = [Point(133, 47), Point(140, 47), Point(140, 147)]
+                elif target_table == 'Mesa11':
+                    path_from_kitchen += [Point(140,135), Point(140, 75),Point(133, 75),]
+                    back_path = [Point(133, 75), Point(140, 75),Point(140, 147)]
+                elif target_table == 'Mesa12':
+                    path_from_kitchen += [Point(140,135), Point(140, 103),Point(133, 103),]
+                    back_path = [Point(133, 103), Point(140, 103), Point(140, 147)]
+
+                #Indicção de movimento do robot
+                # 1. Movimento até à zona de entrega
                 self.waiter.move_waiter(path_to_kitchen)
-                
-                # (Aqui poderia ter uma pausa para "pegar a comida")
-                time.sleep(2)  # Simula o tempo de carregamento
-                
-                # 2. Movimento de volta ao ponto (130, 60)
+                # Tempo de confeção
+                time.sleep(2)  # Tempo de confeção
+                # 2. Movimento até à mesa
                 self.waiter.move_waiter(path_from_kitchen)
-              
-
-                time.sleep(2)  # 模拟送餐时间
-
-                # 回待命区
-    
-                back_path = [
-                    self.waiter.getCenter(),
-                    Point(75, 135),
-                    Point(140,135),
-                    Point(140, 147)
-                ]
+                # Tempo de entrega
+                time.sleep(2)  
+                # voltar até dockstation
                 self.waiter.move_waiter(back_path)
 
+            # Verificar se clique foi dentro do botão de saída
+            if 66 <= click_x <= 88 and 0 <= click_y <= 10:
+                self.window.close()
+                break
 
 def main():
     "exacutar o programa"
