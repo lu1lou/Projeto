@@ -78,9 +78,7 @@ class Waiter:
                         time.sleep(2)
                         obs.undraw()
                         dynamic_obstacles.remove(obs)
-                    time.sleep(2)
-                    obs.undraw()
-    
+                    
     def is_colliding(self, rect):
         cx, cy = self.circle.getCenter().getX(), self.circle.getCenter().getY()
         r = self.circle.getRadius()
