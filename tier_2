@@ -1,0 +1,343 @@
+from graphics import *
+import time
+
+class Table:
+    """Classe para representar uma mesa do restaurante"""
+    
+    def __init__(self, name, rectangle):
+        self.name = name
+        self.rectangle = rectangle
+        
+    def draw(self, window):
+        """Desenha a mesa na janela"""
+        # Criar retângulo da mesa
+        mesa_rect = Rectangle(
+            Point(self.rectangle.p1.x, self.rectangle.p1.y),
+            Point(self.rectangle.p2.x, self.rectangle.p2.y)
+        )
+        mesa_rect.setFill("blue")
+        mesa_rect.setOutline("black")
+        mesa_rect.setWidth(2)
+        mesa_rect.draw(window)
+        label = Text(mesa_rect.getCenter(), self.name)
+        label.draw(window)
+        
+
+    def point_inside(self, point):  # Add self as first parameter
+        """Check if point is inside this table's rectangle"""
+        return (self.rectangle.p1.x <= point.x <= self.rectangle.p2.x and 
+                self.rectangle.p1.y <= point.y <= self.rectangle.p2.y)
+                       
+class Waiter:
+    def __init__(self, centro, raio):
+       self.position = centro  # Store position
+       self.radius = raio
+       
+
+    def draw(self, window):
+        """Desenha o waiter na janela"""
+        # Desenhar círculo do robô
+        self.circle = Circle(self.position, self.radius)
+        self.circle.setFill("light blue")
+        self.circle.setOutline("black")
+        self.circle.setWidth(2)
+        self.circle.draw(window)
+        
+    def getCenter(self):
+        return self.position
+    
+    def move_waiter(self, points, dynamic_obstacles, tables, window, delay=0.015) :
+        for i in range(len(points) - 1):
+            start = points[i]
+            end = points[i + 1]
+            dx = end.getX() - start.getX()
+            dy = end.getY() - start.getY()
+            steps = int(max(abs(dx), abs(dy)))
+            
+            for _ in range(steps):
+                # Move servant step by step
+                self.circle.move(dx / steps, dy / steps)
+                time.sleep(delay)
+                
+                # Check for click to add obstacle
+                click = window.checkMouse()
+                if click:
+
+                    # If click is not on a table, place an obstacle
+                    if not any(table.point_inside(click) for table in tables):
+                        obs = Rectangle(Point(click.getX() - 4, click.getY() - 4),
+                                        Point(click.getX() + 4, click.getY() + 4))
+                        obs.setFill("black")
+                        obs.draw(window)
+                        dynamic_obstacles.append(obs)
+                        
+
+                # Check collision with dynamic obstacles
+                for obs in dynamic_obstacles[:]:
+                    if self.is_colliding(obs):
+                        time.sleep(2)
+                        obs.undraw()
+                        dynamic_obstacles.remove(obs)
+                    time.sleep(2)
+                    obs.undraw()
+    
+    def is_colliding(self, rect):
+        cx, cy = self.circle.getCenter().getX(), self.circle.getCenter().getY()
+        r = self.circle.getRadius()
+        x1, y1 = rect.getP1().getX(), rect.getP1().getY()
+        x2, y2 = rect.getP2().getX(), rect.getP2().getY()
+        return x1 - r <= cx <= x2 + r and y1 - r <= cy <= y2 + r
+
+class RestaurantLayout:
+    """Classe principal para gerir o layout do restaurante"""
+    
+    #inserir os objetos para o layout
+    def __init__(self, filename="salaxx.txt"):
+        self.filename = filename
+        self.tables = []
+        self.dividers = []
+        self.dock = []
+        self.coletor = []
+        self.saida = []
+        self.waiter = None
+        
+
+    #ler o ficheiro
+    def load_layout(self):
+        """Carrega o layout da sala a partir do ficheiro de texto"""
+        try:
+            with open(self.filename, 'r') as file:
+                content = file.read()
+                # Processar cada linha que define uma mesa ou divisor
+                lines = content.split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if line:
+                        self.parse_line(line)
+        #verificar se consegue ler o ficheiro                
+        except FileNotFoundError:
+            print(f"Erro: Ficheiro {self.filename} não encontrado!")
+            return False
+        except Exception as e:
+            print(f"Erro ao ler ficheiro: {e}")
+            return False
+        return True
+    
+    def parse_line(self, line):
+        """Analisa uma linha do ficheiro e cria o objeto correspondente"""
+        # Formato: NomeX Rectangle(Point(x1, y1), Point(x2, y2))
+        try:
+            # Separar nome do retângulo
+            parts = line.split(' Rectangle(Point(')
+            if len(parts) != 2:
+                return
+            name = parts[0].strip()
+            coords_part = parts[1]
+            
+            # Extrair coordenadas: remover parênteses finais e separar
+            coords_part = coords_part.replace('), Point(', ',').replace('))', '')
+            coords = [float(x.strip()) for x in coords_part.split(',')]
+            
+            if len(coords) == 4:
+                x1, y1, x2, y2 = coords
+                rectangle = Rectangle(Point(x1+.5, y1+0.5), Point(x2-0.5, y2-0.5))  
+                #para as mesas e divisores nao tocarem
+                
+                if name.startswith('Mesa'):
+                    table = Table(name, rectangle)
+                    self.tables.append(table)
+                elif name.startswith('Divisor'):
+                    self.dividers.append((name, rectangle))
+                elif name.startswith('Dock'):
+                    self.dock.append((name,rectangle))
+                elif name.startswith('Coletor'):
+                    self.coletor.append((name,rectangle))
+                elif name.startswith('Saida'):
+                    self.saida.append((name,rectangle))
+        except (ValueError, IndexError) as e:
+            print(f"Erro ao processar linha: {line} - {e}")
+    
+    def create_window(self):
+        """Cria a janela principal"""
+        # Definir tamanho da janela baseado nas coordenadas
+        self.window = GraphWin("Layout do Restaurante", 500, 500)
+        self.window.setBackground("lightgray")
+        
+        # Definir coordenadas da janela`
+        self.window.setCoords(0, 0, 150, 150)
+         
+        #Botão de saída
+        but = Rectangle(Point(66, 0), Point(88, 10))
+        but.setFill('red')
+        but_text = Text(Point(77, 5), "Sair")  
+        
+        # Draw elements
+        but.draw(self.window)
+        but_text.draw(self.window)
+        
+        return self.window
+    
+    def draw_layout(self):
+        """Desenha todo o layout do restaurante"""
+        if not self.window:
+            return
+        
+        # Desenhar divisórias primeiro
+        for name, rect in self.dividers:
+            divisor = Rectangle(Point(rect.p1.x, rect.p1.y), Point(rect.p2.x, rect.p2.y))
+            divisor.setFill("darkgray")
+            divisor.setOutline("black")
+            divisor.setWidth(1)
+            divisor.draw(self.window)
+            
+        #Desenhar dock
+        for name, rect in self.dock:
+            dock = Rectangle(Point(rect.p1.x, rect.p1.y), Point(rect.p2.x, rect.p2.y))
+            dock.setFill("black")
+            dock.setOutline("black")
+            dock.setWidth(1)
+            dock.draw(self.window)
+            
+        #Desenhar coletor
+        for name, rect in self.coletor:
+            coletor = Rectangle(Point(rect.p1.x, rect.p1.y), Point(rect.p2.x, rect.p2.y))
+            coletor.setFill("purple")
+            coletor.setOutline("black")
+            coletor.setWidth(1)
+            coletor.draw(self.window)
+            
+        #Desenhar Saida de Pratos
+        for name,rect in self.saida:
+            saida = Rectangle(Point(rect.p1.x, rect.p1.y), Point(rect.p2.x, rect.p2.y))
+            saida.setFill("yellow")
+            saida.setOutline("black")
+            saida.setWidth(1)
+            saida.draw(self.window)
+            
+        # Desenhar mesas
+        for table in self.tables:
+            table.draw(self.window)
+    
+    def run(self):
+        """Executa o programa principal"""
+        # Carregar layout
+        self.load_layout()
+           
+        # Criar janela
+        self.create_window()
+        
+        # Desenhar layout
+        self.draw_layout()
+        
+        self.waiter = Waiter(Point(140, 147), 3)
+        self.waiter.draw(self.window)
+        
+        dynamic_obstacles = []
+
+    # Loop principal para verificar cliques no botão de saída
+        while True:
+            click = self.window.getMouse()
+            click_x, click_y = click.getX(), click.getY()
+
+            target_table = None
+            for table in self.tables:  # Fixed loop variable name
+                if table.point_inside(click):  # Should be a proper instance method
+                    target_table = table.name  # Get the TABLE'S name
+                    break
+
+            if target_table:
+
+                # caminho para diferentes mesas
+                current_pos = self.waiter.getCenter()
+                
+                #caminho até zona de saida de pratos
+                path_to_tables = [current_pos,          # Onde o robot está agora
+                                   Point(140, 135), ]    # sair de doock
+                path_to_kitchen = [] # Continuar de onde parou
+                back_path = [] #caminho de volta
+
+                #Condição que diefine o percurso do robot
+                if target_table == 'Mesa1':
+                    path_to_tables += [Point(11,135), Point(11, 47),Point(18,47),] 
+                    path_to_kitchen = [Point(18,47), Point(11, 47), Point(11,135), Point(75,135)] 
+                    back_path = [Point(18,47), Point(11, 47),Point(11,135), Point(140,135), Point(140, 147)]
+                elif target_table == 'Mesa2':
+                    path_to_tables += [Point(11,135), Point(11, 75), Point(18,75)]
+                    path_to_kitchen = [Point(18,75), Point(11, 75), Point(11,135), Point(75,135)]
+                    back_path = [Point(18,75), Point(11, 75),Point(11,135), Point(140,135), Point(140, 147)]
+                elif target_table == 'Mesa3':
+                    path_to_tables += [Point(11,135), Point(11, 103), Point(18,103)]
+                    path_to_kitchen = [Point(18,103), Point(11, 103), Point(11,135), Point(75,135)]
+                    back_path = [Point(18,103), Point(11, 103),Point(11,135), Point(140,135), Point(140, 147)]
+
+                #caminho para mesas 4,5,6
+                elif target_table == 'Mesa4':
+                    path_to_tables += [Point(75,135),Point(75,47), Point(68, 47),]
+                    path_to_kitchen = [Point(68, 47), Point(75,47), Point(75,135),]
+                    back_path = [Point(68,47), Point(75,47), Point(75, 135), Point(140,135),Point(140, 147)]
+                elif target_table == 'Mesa5':    
+                    path_to_tables += [Point(75,135), Point(75,75), Point(68, 75)]
+                    path_to_kitchen = [Point(68, 75), Point(75,75), Point(75,135)]
+                    back_path = [Point(68,75), Point(75,75), Point(75, 135), Point(140,135),Point(140, 147)]
+                elif target_table == 'Mesa6':
+                    path_to_tables += [ Point(75,135), Point(75,103), Point(68, 103),]
+                    path_to_kitchen = [Point(68, 103),Point(75,103), Point(75,135),]
+                    back_path = [Point(68,103), Point(75,103), Point(75, 135), Point(140,135),Point(140, 147)]
+                
+                #caminho para mesas 7,8,9
+                elif target_table == 'Mesa7':
+                    path_to_tables += [Point(75,135),Point(75,47), Point(82, 47),]
+                    path_to_kitchen = [Point(82, 47), Point(75,47), Point(75,135),]
+                    back_path = [Point(82,47), Point(75,47), Point(75, 135), Point(140,135),Point(140, 147)]
+                elif target_table == 'Mesa8':
+                    path_to_tables += [Point(75,135), Point(75,75), Point(82, 75),]
+                    path_to_kitchen = [Point(82, 75), Point(75,75), Point(75,135)]
+                    back_path = [Point(82,75), Point(75,75), Point(75, 135), Point(140,135),Point(140, 147)]
+                elif target_table == 'Mesa9':
+                    path_to_tables += [Point(75,135), Point(75,103), Point(82, 103),]
+                    path_to_kitchen = [Point(82, 103), Point(75,103), Point(75,135),]
+                    back_path = [Point(82,103), Point(75,103), Point(75, 135), Point(140,135),Point(140, 147)]
+                   
+                #caminho para mesas 10,11,12
+                elif target_table == 'Mesa10':
+                    path_to_tables += [Point(140,135), Point(140, 47),Point(133, 47),]
+                    path_to_kitchen = [Point(133,47), Point(140, 47),Point(140, 135),Point(75,135)]
+                    back_path = [Point(133, 47), Point(140, 47), Point(140, 147)]
+                elif target_table == 'Mesa11':
+                    path_to_tables += [Point(140,135), Point(140, 75),Point(133, 75),]
+                    path_to_kitchen = [Point(133, 75), Point(140, 75), Point(140,135), Point(75,135)]
+                    back_path = [Point(133, 75), Point(140, 75),Point(140, 147)]
+                elif target_table == 'Mesa12':
+                    path_to_tables += [Point(140,135), Point(140, 103),Point(133, 103),]
+                    path_to_kitchen = [Point(133, 103), Point(140, 103), Point(140,135), Point(75,135)]
+                    back_path = [Point(133, 103), Point(140, 103), Point(140, 147)]
+
+
+            #Indicção de movimento do robot
+                # Movimento até à mesa
+                self.waiter.move_waiter(path_to_tables, dynamic_obstacles, self.tables, self.window)
+                # Fazer pedido
+                time.sleep(2)   
+                #Buscar pratos 
+                self.waiter.move_waiter(path_to_kitchen, dynamic_obstacles, self.tables, self.window)
+                # Tempo de confeção
+                time.sleep(2)
+                #Entregar pratos 
+                self.waiter.move_waiter(list(reversed(path_to_kitchen)), dynamic_obstacles, self.tables, self.window)
+                #Entrega de pratos
+                time.sleep(2)
+                # voltar até dockstation
+                self.waiter.move_waiter(back_path, dynamic_obstacles, self.tables, self.window)
+  
+            # Verificar se clique foi dentro do botão de saída
+            if 66 <= click_x <= 88 and 0 <= click_y <= 10:
+                self.window.close()
+                break
+
+def main():
+    "exacutar o programa"
+    restaurant = RestaurantLayout("salaxx.txt")
+    restaurant.run()
+
+if __name__ == "__main__":
+    main()
