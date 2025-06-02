@@ -2,6 +2,7 @@
 Licenciatura em Engenharia Mecânica
 ist1114617 - Diogo Chen - diogomchen@tecnico.ulisboa.pt
 ist114863 - Luis Tenreiro - luis.tenreiro@tecnico.ulisboa.pt
+Grupo - 43
 """
 
 from graphics import *
@@ -257,7 +258,7 @@ class Restaurante:
         #Desenhar o dropdown a informacao ele
         info_caixa = Rectangle(Point(50, 90), Point(100, 60))
         info_txt = Text(info_caixa.getCenter(),
-                         "LeMec2024/2025\n"
+                         "LeMec 2024/2025\n"
                          "ist1114617 - Diogo Chen\n"
                          "ist1114863 - Luis Tenreiro\n"
                          "Grupo - 43\n"
@@ -334,10 +335,10 @@ class Restaurante:
                         info_caixa_drawn = False
                     continue
                 
-                ponto_table = None     #Quando nenhuma mesa é escolhido
-                for table in self.tables:  # Fixed loop variable name
-                    if table.ponto_dentro(click):  # Should be a proper instance method
-                        ponto_table = table.name  # Get the TABLE'S name
+                ponto_table = None  #Quando nenhuma mesa é escolhido
+                for table in self.tables:  
+                    if table.ponto_dentro(click):  # Verica se houve um click dentro de uma mesa
+                        ponto_table = table.name  # Vé qual a mesa
                         break
                 
                 if ponto_table and not movimento:
