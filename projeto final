@@ -57,8 +57,7 @@ class Table:
 class Waiter:
     def __init__(self, centro, raio):
        self.position = centro  # Store position
-       self.radius = raio
-       
+       self.radius = raio      
 
     def draw(self, window):
         """Desenha o waiter na janela"""
@@ -173,6 +172,7 @@ class RestaurantLayout:
         but = Rectangle(Point(66, 0), Point(88, 10))
         but.setFill('red')
         but_text = Text(Point(77, 5), "Sair")  
+        but_text.setSize(8)
         
         # Draw elements
         but.draw(self.window)
@@ -182,7 +182,8 @@ class RestaurantLayout:
         but_info.setFill("purple")
         but_info.draw(self.window)
         
-        label = Text(but_info.getCenter(), "informacao")
+        label = Text(but_info.getCenter(), "Informação")
+        label.setSize(8)
         label.setTextColor("white")
         label.draw(self.window)
                
