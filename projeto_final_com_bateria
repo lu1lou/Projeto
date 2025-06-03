@@ -10,34 +10,34 @@ import time
 import math
 
 class Battery:
-    """Classe para gerir a bateria do waiter"""
+    #Classe para gerir a bateria do waiter
     def __init__(self, max_level=100):
         self.max_level = max_level
         self.bateria_atual = max_level
         self.limite_recarga = 20
         
     def consumo(self, energia):
-        """Consome bateria"""
+        #Consome bateria
         self.bateria_atual = max(0, self.bateria_atual - energia)
         
     def bateria_baixa(self):
-        """Verifica se a bateria está baixa"""
+        #Verifica se a bateria está baixa
         return self.bateria_atual <= self.limite_recarga
         
     def bateria_vazia(self):
-        """Verifica se a bateria está vazia"""
+        #Verifica se a bateria está vazia
         return self.bateria_atual <= 0
         
     def recarga(self):
-        """Recarrega a bateria ao máximo"""
+        #Recarrega a bateria ao máximo
         self.bateria_atual = self.max_level
         
     def nível(self):
-        """Retorna o nível atual da bateria"""
+        #Retorna o nível atual da bateria
         return self.bateria_atual
     
 class Obstaculo:
-    "classe para representar obstaculos"
+    #classe para representar obstaculos
     def __init__(self, win, center, size=3):
         self.win = win
         self.center = center
@@ -51,7 +51,7 @@ class Obstaculo:
         self.created_time = time.time()
 
     def expirado(self, current_time=None):
-        "verifica quando um obstaculo existe a mais 3 segundos"
+        #verifica quando um obstaculo existe a mais 3 segundos
         if current_time is None:
             current_time = time.time()
         return current_time - self.created_time >= 3
@@ -60,7 +60,7 @@ class Obstaculo:
         self.rect.undraw()
     
     def colisão(self, waiter):
-        "Verifica se se sobrepoem ao waiter"
+        #Verifica se se sobrepoem ao waiter
         waiter_x, waiter_y = waiter.getCenter().getX(), waiter.getCenter().getY()
         waiter_r = waiter.getRaio()
         obs_x1, obs_y1 = self.rect.getP1().getX(), self.rect.getP1().getY()
@@ -69,14 +69,14 @@ class Obstaculo:
         
     
 class Table:
-    """Classe para representar uma mesa do restaurante"""
+    #Classe para representar uma mesa do restaurante
     
     def __init__(self, name, rectangle):
         self.name = name
         self.rectangle = rectangle
         
     def draw(self, window):
-        """Desenha a mesa na janela"""
+        #Desenha a mesa na janela
         # Criar retângulo da mesa
         mesa_rect = Rectangle(
             Point(self.rectangle.p1.x, self.rectangle.p1.y),
@@ -88,11 +88,11 @@ class Table:
         mesa_rect.draw(window)
 
     def ponto_dentro(self, point):  
-        "verifique se o ponto coletado está dentro duma mesa"
+        #verifique se o ponto coletado está dentro duma mesa
         return (self.rectangle.p1.x <= point.x <= self.rectangle.p2.x and 
                 self.rectangle.p1.y <= point.y <= self.rectangle.p2.y)
        
-                
+
 class Waiter:
     def __init__(self, centro, raio):
        self.position = centro  # Store position
@@ -108,7 +108,7 @@ class Waiter:
         self.circle.draw(window)
         
     def mudança_cor(self):
-        """Atualiza a cor baseada no nível da bateria"""
+        #Atualiza a cor baseada no nível da bateria
         if self.battery.bateria_vazia():
             self.circle.setFill("red")
         elif self.battery.bateria_baixa():
@@ -117,20 +117,21 @@ class Waiter:
             self.circle.setFill("light blue") 
             
     def getCenter(self):
-        "Buscar o centro do waiter"
+        #Buscar o centro do waiter
         return self.position
         
     def getRaio(self):
-        "buscar o raio do waiter"
+        #buscar o raio do waite
         return self.radius
     
     def move_waiter(self, points, window) :
+        #função que faz rôbo andar
         for i in range(len(points) - 1):    #vai sobre cada ponto 
-            start = points[i]
-            end = points[i + 1]
-            dx = end.getX() - start.getX()
-            dy = end.getY() - start.getY()
-            steps = int(max(abs(dx), abs(dy)))
+            start = points[i] #ponto inicial
+            end = points[i + 1] #Ponto final
+            dx = end.getX() - start.getX() #distancia em x
+            dy = end.getY() - start.getY() #distancia em y
+            steps = int(max(abs(dx), abs(dy)))  
             for _ in range(steps):
                 # Consumir bateria baseado na distância
                 distance = math.sqrt((dx/steps)**2 + (dy/steps)**2)
@@ -212,7 +213,7 @@ def caminhos (ponto_table,posição_atual):
     return caminho_mesa, caminho_pt_entrega, caminho_volta, 
 
 def abrir_ficheiro(filename):
-    "Carrega o layout da sala a partir do ficheiro de texto"
+    #Carrega o layout da sala a partir do ficheiro de texto
     tables = []
     divisores = []
     dock = []
@@ -256,7 +257,7 @@ def abrir_ficheiro(filename):
     }
 
 def ler_ficheiro(line):
-    """Analisa uma linha do ficheiro e extrai nome e retângulo"""
+    #Analisa uma linha do ficheiro e extrai nome e retângulo
     try:
         parts = line.split(' Rectangle(Point(')
         if len(parts) != 2:
@@ -279,7 +280,7 @@ def ler_ficheiro(line):
     return None
      
 def draw_layout(window, layout_data):
-    """Desenha todo os objetos do restaurante"""
+   #Desenha todo os objetos do restaurante
 
     # Desenhar divisórias primeiro
     for name, rect in layout_data["divisores"]:
@@ -318,7 +319,7 @@ def draw_layout(window, layout_data):
         table.draw(window)
         
 class Butoes :
-    """Classe para gerir as butoes"""
+    #Classe para gerir as butoes
     
     def __init__(self, window):
         self.window = window
@@ -338,7 +339,7 @@ class Butoes :
         but_saida.draw(self.window)
         but_saida_txt.draw(self.window)
         
-        #Botão para dropdown
+        #Botão para caixa de informação
         but_info = Rectangle(Point(120, 0), Point(140, 10))
         but_info.setFill("purple")
         but_info.draw(self.window)
@@ -353,7 +354,7 @@ class Butoes :
         self.battery_text.draw(self.window)
         
     def caixa_info(self, window):
-        #Desenhar o dropdown a informacao ele
+        #Desenhar o caixa de informação
         info_caixa = Rectangle(Point(50, 90), Point(100, 60))
         info_txt = Text(info_caixa.getCenter(),
                          "LeMec 2024/2025\n"
@@ -368,15 +369,15 @@ class Butoes :
         info_caixa_drawn = False     
    
     def but_saida_clicked(self, click):
-       """Verifica se o botão de saída foi clicado"""
+       #Verifica se o botão de saída foi clicado
        return 66 <= click.getX() <= 88 and 0 <= click.getY() <= 10
        
     def but_info_clicked(self, click):
-        """Verifica se o botão de informação foi clicado"""
+        #Verifica se o botão de informação foi clicado
         return 120 <= click.getX() <= 140 and 0 <= click.getY() <= 10 
     
     def bateria_window(self, battery_level):
-        """Atualiza o display da bateria"""
+        #Atualiza o display da bateria
         if self.battery_text:
             self.battery_text.setText(f"Bateria: {int(battery_level)}%")
             if battery_level <= 20:
@@ -388,7 +389,7 @@ class Butoes :
         
 
 class Restaurante:
-    """Classe principal para gerir o restaurante"""
+    #Classe principal para gerir o restaurante
     
     def __init__(self, filename="salaxx.txt"):
         self.filename = filename
@@ -401,14 +402,14 @@ class Restaurante:
         self.delay_counter = 0
 
     def create_window(self):
-        """Cria a janela principal"""
+        #Cria a janela principal
         self.window = GraphWin("Layout do Restaurante", 500, 500)
         self.window.setBackground("lightgray")
         self.window.setCoords(0, 0, 150, 150)
         return self.window
     
     def inicializar(self):
-        """Inicializa todos os componentes"""
+        #Inicializa todos os componentes
         # Carregar layout
         self.layout_data = abrir_ficheiro(self.filename)
         if not self.layout_data:
@@ -431,7 +432,7 @@ class Restaurante:
         return True
         
     def table_click(self, ponto_table):
-        """Lida com cliques em mesas"""
+        #Lida com cliques em mesas
         if self.movimento:  # Já em movimento
             return
         # Verificar se precisa recarregar
@@ -457,7 +458,7 @@ class Restaurante:
         self.movimento.append(self.waiter.move_waiter(caminho_volta, self.window))
         
     def voltar_para_recarregar(self):
-        """Força o waiter a voltar ao dock para recarregar"""
+        #Força o waiter a voltar ao dock para recarregar
         posição_atual = self.waiter.getCenter()
         caminho_recarga = [posição_atual, Point(140, 135), Point(140, 147)]  # Define the path to the dock
         self.movimento = []  # Limpar movimentos existentes
@@ -465,14 +466,14 @@ class Restaurante:
         self.movimento.append("recarga")
         
     def atualização_obs(self):
-        """Remove obstáculos expirados"""
+        #Remove obstáculos expirados
         for obs in self.obstaculos[:]:
             if obs.expirado():
                 obs.undraw()
                 self.obstaculos.remove(obs)
                 
     def atualização_mov(self):
-        """Atualiza o movimento do waiter"""
+        #Atualiza o movimento do waiter
         if not self.movimento:
             return
             
@@ -519,7 +520,7 @@ class Restaurante:
                 self.movimento.pop(0)
                 
     def run(self):
-        """Executa o programa principal"""
+        #Executa o programa principal
         if not self.inicializar():
             return
             
@@ -562,7 +563,7 @@ class Restaurante:
 
 
 def main():
-    """Executar o programa"""
+    #Executar o programa
     restaurant = Restaurante("salaxx.txt")
     restaurant.run()
 
