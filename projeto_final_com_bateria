@@ -13,28 +13,28 @@ class Battery:
     """Classe para gerir a bateria do waiter"""
     def __init__(self, max_level=100):
         self.max_level = max_level
-        self.current_level = max_level
-        self.low_threshold = 20
+        self.bateria_atual = max_level
+        self.limite_recarga = 20
         
-    def consumo(self, amount):
+    def consumo(self, energia):
         """Consome bateria"""
-        self.current_level = max(0, self.current_level - amount)
+        self.bateria_atual = max(0, self.bateria_atual - energia)
         
     def bateria_baixa(self):
         """Verifica se a bateria está baixa"""
-        return self.current_level <= self.low_threshold
+        return self.bateria_atual <= self.limite_recarga
         
     def bateria_vazia(self):
         """Verifica se a bateria está vazia"""
-        return self.current_level <= 0
+        return self.bateria_atual <= 0
         
     def recarga(self):
         """Recarrega a bateria ao máximo"""
-        self.current_level = self.max_level
+        self.bateria_atual = self.max_level
         
     def nível(self):
         """Retorna o nível atual da bateria"""
-        return self.current_level
+        return self.bateria_atual
     
 class Obstaculo:
     "classe para representar obstaculos"
@@ -441,8 +441,8 @@ class Restaurante:
             self.voltar_para_recarregar()
             return
         
-        current_pos = self.waiter.getCenter()
-        paths =caminhos(ponto_table, current_pos)
+        posição_atual = self.waiter.getCenter()
+        paths =caminhos(ponto_table, posição_atual)
         
         if paths[0] is None:  # Mesa não encontrada
             return
@@ -460,20 +460,20 @@ class Restaurante:
         
     def voltar_para_recarregar(self):
         """Força o waiter a voltar ao dock para recarregar"""
-        current_pos = self.waiter.getCenter()
-        dock_path = [current_pos, Point(140, 135), Point(140, 147)]  # Define the path to the dock
+        posição_atual = self.waiter.getCenter()
+        caminho_recarga = [posição_atual, Point(140, 135), Point(140, 147)]  # Define the path to the dock
         self.movimento = []  # Limpar movimentos existentes
-        self.movimento.append(self.waiter.move_waiter(dock_path, self.window))
+        self.movimento.append(self.waiter.move_waiter(caminho_recarga, self.window))
         self.movimento.append("recarga")
         
-    def update_obstacles(self):
+    def atualização_obs(self):
         """Remove obstáculos expirados"""
         for obs in self.obstaculos[:]:
             if obs.expirado():
                 obs.undraw()
                 self.obstaculos.remove(obs)
                 
-    def update_movement(self):
+    def atualização_mov(self):
         """Atualiza o movimento do waiter"""
         if not self.movimento:
             return
@@ -500,8 +500,8 @@ class Restaurante:
                 
         else:
             try:
-                collided = any(obs.colisão(self.waiter) for obs in self.obstaculos)
-                if collided:
+                colisão = any(obs.colisão(self.waiter) for obs in self.obstaculos)
+                if colisão:
                     if self.delay_counter == 0:
                         self.delay_counter = int(2 / 0.02)  # 2 segundos
                     elif self.delay_counter > 0:
@@ -528,10 +528,10 @@ class Restaurante:
         # Loop principal
         while True:
             # Atualizar obstáculos
-            self.update_obstacles()
+            self.atualização_obs()
             
             # Atualizar movimento
-            self.update_movement()
+            self.atualização_mov()
             
             # # Atualizar display da bateria
             self.butoes.bateria_window(self.waiter.battery.nível())
