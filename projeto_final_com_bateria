@@ -544,7 +544,7 @@ class Restaurante:
                     self.window.close()
                     break
                 elif self.butoes.but_info_clicked(click):
-                    self.butoes.caixa_info(windows)
+                    self.butoes.caixa_info(self.window)
                     continue
                     
                 # Verificar clique em mesa
