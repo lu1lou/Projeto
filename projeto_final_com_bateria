@@ -92,8 +92,6 @@ class Table:
         return (self.rectangle.p1.x <= point.x <= self.rectangle.p2.x and 
                 self.rectangle.p1.y <= point.y <= self.rectangle.p2.y)
        
-def distancia(p1, p2):
-    return math.hypot(p1.getX() - p2.getX(), p1.getY() - p2.getY())
                 
 class Waiter:
     def __init__(self, centro, raio):
