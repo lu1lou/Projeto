@@ -1,0 +1,575 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jun  3 11:20:26 2025
+
+@author: luisl
+"""
+
+from graphics import *
+import time
+import math
+
+class Battery:
+    """Classe para gerir a bateria do waiter"""
+    def __init__(self, max_level=100):
+        self.max_level = max_level
+        self.current_level = max_level
+        self.low_threshold = 20
+        
+    def consume(self, amount):
+        """Consome bateria"""
+        self.current_level = max(0, self.current_level - amount)
+        
+    def is_low(self):
+        """Verifica se a bateria está baixa"""
+        return self.current_level <= self.low_threshold
+        
+    def is_empty(self):
+        """Verifica se a bateria está vazia"""
+        return self.current_level <= 0
+        
+    def recharge(self):
+        """Recarrega a bateria ao máximo"""
+        self.current_level = self.max_level
+        
+    def get_level(self):
+        """Retorna o nível atual da bateria"""
+        return self.current_level
+    
+class Obstaculo:
+    "classe para representar obstaculos"
+    def __init__(self, win, center, size=3):
+        self.win = win
+        self.center = center
+        self.size = size
+        self.rect = Rectangle(
+            Point(center.getX() - size, center.getY() - size),
+            Point(center.getX() + size, center.getY() + size)
+        )
+        self.rect.setFill("brown")
+        self.rect.draw(win)
+        self.created_time = time.time()
+
+    def expirado(self, current_time=None):
+        "verifica quando um obstaculo existe a mais 3 segundos"
+        if current_time is None:
+            current_time = time.time()
+        return current_time - self.created_time >= 3
+
+    def undraw(self):
+        self.rect.undraw()
+    
+    def colisão(self, waiter):
+        "Verifica se se sobrepoem ao waiter"
+        waiter_x, waiter_y = waiter.getCenter().getX(), waiter.getCenter().getY()
+        waiter_r = waiter.getRaio()
+        obs_x1, obs_y1 = self.rect.getP1().getX(), self.rect.getP1().getY()
+        obs_x2, obs_y2 = self.rect.getP2().getX(), self.rect.getP2().getY()
+        return obs_x1 - waiter_r <= waiter_x <= obs_x2 + waiter_r and obs_y1 - waiter_r <= waiter_y <= obs_y2 + waiter_r  # o water r está presente para o waiter não se realmente sobrepor ao obstaculo
+        
+    
+class Table:
+    """Classe para representar uma mesa do restaurante"""
+    
+    def __init__(self, name, rectangle):
+        self.name = name
+        self.rectangle = rectangle
+        
+    def draw(self, window):
+        """Desenha a mesa na janela"""
+        # Criar retângulo da mesa
+        mesa_rect = Rectangle(
+            Point(self.rectangle.p1.x, self.rectangle.p1.y),
+            Point(self.rectangle.p2.x, self.rectangle.p2.y)
+        )
+        mesa_rect.setFill("blue")
+        mesa_rect.setOutline("black")
+        mesa_rect.setWidth(2)
+        mesa_rect.draw(window)
+
+    def ponto_dentro(self, point):  
+        "verifique se o ponto coletado está dentro duma mesa"
+        return (self.rectangle.p1.x <= point.x <= self.rectangle.p2.x and 
+                self.rectangle.p1.y <= point.y <= self.rectangle.p2.y)
+       
+def distance(p1, p2):
+    return math.hypot(p1.getX() - p2.getX(), p1.getY() - p2.getY())
+                
+class Waiter:
+    def __init__(self, centro, raio):
+       self.position = centro  # Store position
+       self.radius = raio
+       self.battery = Battery()
+
+    def draw(self, window):
+        # Desenhar círculo do robô
+        self.circle = Circle(self.position, self.radius)
+        self.circle.setFill("light blue")
+        self.circle.setOutline("black")
+        self.circle.setWidth(2)
+        self.circle.draw(window)
+        
+    def update_color(self):
+        """Atualiza a cor baseada no nível da bateria"""
+        if self.battery.is_empty():
+            self.circle.setFill("red")
+        elif self.battery.is_low():
+            self.circle.setFill("orange")
+        else:
+            self.circle.setFill("light blue") 
+            
+    def getCenter(self):
+        "Buscar o centro do waiter"
+        return self.position
+        
+    def getRaio(self):
+        "buscar o raio do waiter"
+        return self.radius
+    
+    def move_waiter(self, points, window) :
+        for i in range(len(points) - 1):    #vai sobre cada ponto 
+            start = points[i]
+            end = points[i + 1]
+            dx = end.getX() - start.getX()
+            dy = end.getY() - start.getY()
+            steps = int(max(abs(dx), abs(dy)))
+            for _ in range(steps):
+                # Consumir bateria baseado na distância
+                distance = math.sqrt((dx/steps)**2 + (dy/steps)**2)
+                self.battery.consume(distance * 0.1)  # Factor de consumo
+                self.update_color()
+                # Move o waiter passo a passo
+                self.circle.move(dx / steps, dy / steps)        
+                self.position = self.circle.getCenter()
+                yield
+
+def caminhos (ponto_table,current_pos):
+    """Classe para gerir os caminhos do waiter"""
+    
+    #caminho até zona de saida de pratos
+    path_to_tables = [current_pos,          # Onde o robot está agora
+                       Point(140, 135), ]    # sair de doock
+    path_to_kitchen = [] # Continuar de onde parou
+    back_path = [] #caminho de volta
+    dock_path = [current_pos, Point(140, 135), Point(140, 147)]
+    
+    #Condição que diefine o percurso do robot
+    if ponto_table == 'Mesa1':
+        path_to_tables += [Point(11,135), Point(11, 47),Point(18,47),] 
+        path_to_kitchen = [Point(18,47), Point(11, 47), Point(11,135), Point(75,135)] 
+        back_path = [Point(18,47), Point(11, 47),Point(11,135), Point(140,135), Point(140, 147)]
+    elif ponto_table == 'Mesa2':
+        path_to_tables += [Point(11,135), Point(11, 75), Point(18,75)]
+        path_to_kitchen = [Point(18,75), Point(11, 75), Point(11,135), Point(75,135)]
+        back_path = [Point(18,75), Point(11, 75),Point(11,135), Point(140,135), Point(140, 147)]
+    elif ponto_table == 'Mesa3':
+        path_to_tables += [Point(11,135), Point(11, 103), Point(18,103)]
+        path_to_kitchen = [Point(18,103), Point(11, 103), Point(11,135), Point(75,135)]
+        back_path = [Point(18,103), Point(11, 103),Point(11,135), Point(140,135), Point(140, 147)]
+
+    #caminho para mesas 4,5,6
+    elif ponto_table == 'Mesa4':
+        path_to_tables += [Point(75,135),Point(75,47), Point(68, 47),]
+        path_to_kitchen = [Point(68, 47), Point(75,47), Point(75,135),]
+        back_path = [Point(68,47), Point(75,47), Point(75, 135), Point(140,135),Point(140, 147)]
+    elif ponto_table == 'Mesa5':    
+        path_to_tables += [Point(75,135), Point(75,75), Point(68, 75)]
+        path_to_kitchen = [Point(68, 75), Point(75,75), Point(75,135)]
+        back_path = [Point(68,75), Point(75,75), Point(75, 135), Point(140,135),Point(140, 147)]
+    elif ponto_table == 'Mesa6':
+        path_to_tables += [ Point(75,135), Point(75,103), Point(68, 103),]
+        path_to_kitchen = [Point(68, 103),Point(75,103), Point(75,135),]
+        back_path = [Point(68,103), Point(75,103), Point(75, 135), Point(140,135),Point(140, 147)]
+    
+    #caminho para mesas 7,8,9
+    elif ponto_table == 'Mesa7':
+        path_to_tables += [Point(75,135),Point(75,47), Point(82, 47),]
+        path_to_kitchen = [Point(82, 47), Point(75,47), Point(75,135),]
+        back_path = [Point(82,47), Point(75,47), Point(75, 135), Point(140,135),Point(140, 147)]
+    elif ponto_table == 'Mesa8':
+        path_to_tables += [Point(75,135), Point(75,75), Point(82, 75),]
+        path_to_kitchen = [Point(82, 75), Point(75,75), Point(75,135)]
+        back_path = [Point(82,75), Point(75,75), Point(75, 135), Point(140,135),Point(140, 147)]
+    elif ponto_table == 'Mesa9':
+        path_to_tables += [Point(75,135), Point(75,103), Point(82, 103),]
+        path_to_kitchen = [Point(82, 103), Point(75,103), Point(75,135),]
+        back_path = [Point(82,103), Point(75,103), Point(75, 135), Point(140,135),Point(140, 147)]
+       
+    #caminho para mesas 10,11,12
+    elif ponto_table == 'Mesa10':
+        path_to_tables += [Point(140,135), Point(140, 47),Point(133, 47),]
+        path_to_kitchen = [Point(133,47), Point(140, 47),Point(140, 135),Point(75,135)]
+        back_path = [Point(133, 47), Point(140, 47), Point(140, 147)]
+    elif ponto_table == 'Mesa11':
+        path_to_tables += [Point(140,135), Point(140, 75),Point(133, 75),]
+        path_to_kitchen = [Point(133, 75), Point(140, 75), Point(140,135), Point(75,135)]
+        back_path = [Point(133, 75), Point(140, 75),Point(140, 147)]
+    elif ponto_table == 'Mesa12':
+        path_to_tables += [Point(140,135), Point(140, 103),Point(133, 103),]
+        path_to_kitchen = [Point(133, 103), Point(140, 103), Point(140,135), Point(75,135)]
+        back_path = [Point(133, 103), Point(140, 103), Point(140, 147)]
+
+    else:
+        return None, None, None
+        
+    return path_to_tables, path_to_kitchen, back_path, dock_path
+
+def abrir_ficheiro(filename):
+    "Carrega o layout da sala a partir do ficheiro de texto"
+    tables = []
+    divisores = []
+    dock = []
+    coletor = []
+    saida = []
+    
+    try:
+        with open(filename, 'r') as file:
+            content = file.read()
+            lines = content.split('\n')
+            for line in lines:
+                line = line.strip()
+                if line:
+                    components = ler_ficheiro(line)
+                    if components:
+                        name, rectangle = components
+                        if name.startswith('Mesa'):
+                            tables.append(Table(name, rectangle))
+                        elif name.startswith('Divisor'):
+                            divisores.append((name, rectangle))
+                        elif name.startswith('Dock'):
+                            dock.append((name, rectangle))
+                        elif name.startswith('Coletor'):
+                            coletor.append((name, rectangle))
+                        elif name.startswith('Saida'):
+                            saida.append((name, rectangle))
+                            
+    except FileNotFoundError:
+        print(f"Erro: Ficheiro {filename} não encontrado!")
+        return None
+    except Exception as e:
+        print(f"Erro ao ler ficheiro: {e}")
+        return None
+        
+    return {
+        'tables': tables,
+        'divisores': divisores,
+        'dock': dock,
+        'coletor': coletor,
+        'saida': saida
+    }
+
+def ler_ficheiro(line):
+    """Analisa uma linha do ficheiro e extrai nome e retângulo"""
+    try:
+        parts = line.split(' Rectangle(Point(')
+        if len(parts) != 2:
+            return None
+            
+        name = parts[0].strip()
+        coords_part = parts[1]
+        
+        coords_part = coords_part.replace('), Point(', ',').replace('))', '')
+        coords = [float(x.strip()) for x in coords_part.split(',')]
+        
+        if len(coords) == 4:
+            x1, y1, x2, y2 = coords
+            rectangle = Rectangle(Point(x1+0.5, y1+0.5), Point(x2-0.5, y2-0.5))
+            return name, rectangle
+            
+    except (ValueError, IndexError) as e:
+        print(f"Erro ao processar linha: {line} - {e}")
+        
+    return None
+     
+def draw_layout(window, layout_data):
+    """Desenha todo os objetos do restaurante"""
+
+    # Desenhar divisórias primeiro
+    for name, rect in layout_data["divisores"]:
+        divisor = Rectangle(Point(rect.p1.x, rect.p1.y), Point(rect.p2.x, rect.p2.y))
+        divisor.setFill("darkgray")
+        divisor.setOutline("black")
+        divisor.setWidth(1)
+        divisor.draw(window)
+        
+    #Desenhar dock
+    for name, rect in layout_data["dock"]:
+        dock = Rectangle(Point(rect.p1.x, rect.p1.y), Point(rect.p2.x, rect.p2.y))
+        dock.setFill("black")
+        dock.setOutline("black")
+        dock.setWidth(1)
+        dock.draw(window)
+        
+    #Desenhar coletor
+    for name, rect in layout_data["coletor"]:
+        coletor = Rectangle(Point(rect.p1.x, rect.p1.y), Point(rect.p2.x, rect.p2.y))
+        coletor.setFill("purple")
+        coletor.setOutline("black")
+        coletor.setWidth(1)
+        coletor.draw(window)
+        
+    #Desenhar Saida de Pratos
+    for name,rect in layout_data["saida"]:
+        saida = Rectangle(Point(rect.p1.x, rect.p1.y), Point(rect.p2.x, rect.p2.y))
+        saida.setFill("yellow")
+        saida.setOutline("black")
+        saida.setWidth(1)
+        saida.draw(window)
+        
+    # Desenhar mesas
+    for table in layout_data["tables"]:
+        table.draw(window)
+        
+class Butoes :
+    """Classe para gerir as butoes"""
+    
+    def __init__(self, window):
+        self.window = window
+        self.info_box_drawn = False
+        self.info_box = None
+        self.info_text = None
+        self.battery_text = None
+    
+    def criar_butoes(self,window):
+        #Botão de saída
+        but_saida = Rectangle(Point(66, 0), Point(88, 10))
+        but_saida.setFill('red')
+        but_saida_txt = Text(Point(77, 5), "Sair")  
+        but_saida_txt.setSize(8)
+        
+        #Desenha o botão de sáida
+        but_saida.draw(self.window)
+        but_saida_txt.draw(self.window)
+        
+        #Botão para dropdown
+        but_info = Rectangle(Point(120, 0), Point(140, 10))
+        but_info.setFill("purple")
+        but_info.draw(self.window)
+        but_info_txt = Text(but_info.getCenter(), "Informação")
+        but_info_txt.setSize(8)
+        but_info_txt.setTextColor("white")
+        but_info_txt.draw(self.window)
+        
+        # Indicador de bateria
+        self.battery_text = Text(Point(30, 5), "Bateria: 100%")
+        self.battery_text.setSize(8)
+        self.battery_text.draw(self.window)
+        
+    def caixa_info(self, window):
+        #Desenhar o dropdown a informacao ele
+        info_caixa = Rectangle(Point(50, 90), Point(100, 60))
+        info_txt = Text(info_caixa.getCenter(),
+                         "LeMec 2024/2025\n"
+                         "ist1114617 - Diogo Chen\n"
+                         "ist1114863 - Luis Tenreiro\n"
+                         "Grupo - 43\n"
+        )
+        info_caixa.setFill("orange")
+        info_caixa.setOutline("black")
+        info_txt.setSize(10)
+        #Verifica se uma caixa de informação já está visível na janela
+        info_caixa_drawn = False     
+   
+    def but_saida_clicked(self, click):
+       """Verifica se o botão de saída foi clicado"""
+       return 66 <= click.getX() <= 88 and 0 <= click.getY() <= 10
+       
+    def but_info_clicked(self, click):
+        """Verifica se o botão de informação foi clicado"""
+        return 120 <= click.getX() <= 140 and 0 <= click.getY() <= 10 
+    
+    def update_battery_display(self, battery_level):
+        """Atualiza o display da bateria"""
+        if self.battery_text:
+            self.battery_text.setText(f"Bateria: {int(battery_level)}%")
+            if battery_level <= 20:
+                self.battery_text.setTextColor("red")
+            elif battery_level <= 50:
+                self.battery_text.setTextColor("orange") 
+            else:
+                self.battery_text.setTextColor("green")
+        
+
+class Restaurante:
+    """Classe principal para gerir o restaurante"""
+    
+    def __init__(self, filename="salaxx.txt"):
+        self.filename = filename
+        self.layout_data = None
+        self.window = None
+        self.butoes = None
+        self.waiter = None
+        self.obstaculos = []
+        self.movimento = []
+        self.delay_counter = 0
+
+    def create_window(self):
+        """Cria a janela principal"""
+        self.window = GraphWin("Layout do Restaurante", 500, 500)
+        self.window.setBackground("lightgray")
+        self.window.setCoords(0, 0, 150, 150)
+        return self.window
+    
+    def initialize(self):
+        """Inicializa todos os componentes"""
+        # Carregar layout
+        self.layout_data = abrir_ficheiro(self.filename)
+        if not self.layout_data:
+            return False
+            
+        # Criar janela
+        self.create_window()
+        
+        # Criar UI manager
+        self.butoes = Butoes(self.window)
+        self.butoes.criar_butoes(self.window)
+        
+        # Desenhar layout
+        draw_layout(self.window, self.layout_data)
+        
+        # Criar waiter
+        self.waiter = Waiter(Point(140, 147), 3)
+        self.waiter.draw(self.window)
+        
+        return True
+        
+    def handle_table_click(self, ponto_table):
+        """Lida com cliques em mesas"""
+        if self.movimento:  # Já em movimento
+            return
+        # Verificar se precisa recarregar
+        if self.waiter.battery.is_low():
+            self.return_to_dock_for_recharge()
+            return
+        
+        current_pos = self.waiter.getCenter()
+        paths =caminhos(ponto_table, current_pos)
+        
+        if paths[0] is None:  # Mesa não encontrada
+            return
+        
+        path_to_table, path_to_kitchen, back_path, dock_path = paths
+        
+        # Adicionar movimentos à fila
+        self.movimento.append(self.waiter.move_waiter(path_to_table, self.window))
+        self.movimento.append("pausa")
+        self.movimento.append(self.waiter.move_waiter(path_to_kitchen, self.window))
+        self.movimento.append("pausa")
+        self.movimento.append(self.waiter.move_waiter(list(reversed(path_to_kitchen)), self.window))
+        self.movimento.append("pausa")
+        self.movimento.append(self.waiter.move_waiter(back_path, self.window))
+        
+    def return_to_dock_for_recharge(self):
+        """Força o waiter a voltar ao dock para recarregar"""
+        current_pos = self.waiter.getCenter()
+        dock_path = [current_pos, Point(140, 135), Point(140, 147)]  # Define the path to the dock
+        self.movimento = []  # Limpar movimentos existentes
+        self.movimento.append(self.waiter.move_waiter(dock_path, self.window))
+        self.movimento.append("recharge")
+        
+    def update_obstacles(self):
+        """Remove obstáculos expirados"""
+        for obs in self.obstaculos[:]:
+            if obs.expirado():
+                obs.undraw()
+                self.obstaculos.remove(obs)
+                
+    def update_movement(self):
+        """Atualiza o movimento do waiter"""
+        if not self.movimento:
+            return
+            
+        current = self.movimento[0]
+        
+        if current == "pausa":
+            if self.delay_counter == 0:
+                self.delay_counter = int(2 / 0.02)  # 2 segundos
+            if self.delay_counter > 0:
+                self.delay_counter -= 1
+            if self.delay_counter == 0:
+                self.movimento.pop(0)
+        
+        elif current == "recharge":
+            if self.delay_counter == 0:
+                self.delay_counter = int(3 / 0.02)  # 3 segundos para recarregar"
+            if self.delay_counter > 0:
+                self.delay_counter -= 1
+            if self.delay_counter == 0:
+                self.waiter.battery.recharge()
+                self.waiter.update_color()
+                self.movimento.pop(0)
+                
+        else:
+            try:
+                collided = any(obs.colisão(self.waiter) for obs in self.obstaculos)
+                if collided:
+                    if self.delay_counter == 0:
+                        self.delay_counter = int(2 / 0.02)  # 2 segundos
+                    elif self.delay_counter > 0:
+                        self.delay_counter -= 1
+                else:
+                    if self.delay_counter > 0:
+                        self.delay_counter -= 1
+                    else:
+                        result = next(current)
+                        if result == "battery_empty":
+                            # Limpar movimentos atuais
+                            self.movimento = []
+                            self.return_to_dock_for_recharge()
+                        elif result == "completed":
+                            self.movimento.pop(0)
+            except StopIteration:
+                self.movimento.pop(0)
+                
+    def run(self):
+        """Executa o programa principal"""
+        if not self.initialize():
+            return
+            
+        # Loop principal
+        while True:
+            # Atualizar obstáculos
+            self.update_obstacles()
+            
+            # Atualizar movimento
+            self.update_movement()
+            
+            # # Atualizar display da bateria
+            self.butoes.update_battery_display(self.waiter.battery.get_level())
+            
+            # Verificar cliques
+            click = self.window.checkMouse()
+            if click:
+                if self.butoes.but_saida_clicked(click):
+                    self.window.close()
+                    break
+                elif self.butoes.but_info_clicked(click):
+                    self.butoes.caixa_info(windows)
+                    continue
+                    
+                # Verificar clique em mesa
+                clicked_table = None
+                for table in self.layout_data['tables']:
+                    if table.ponto_dentro(click):
+                        clicked_table = table.name
+                        break
+                        
+                if clicked_table:
+                    self.handle_table_click(clicked_table)
+                else:
+                    # Criar obstáculo
+                    new_obs = Obstaculo(self.window, click)
+                    self.obstaculos.append(new_obs)
+                    
+            time.sleep(0.02)
+
+
+def main():
+    """Executar o programa"""
+    restaurant = Restaurante("salaxx.txt")
+    restaurant.run()
+
+
+if __name__ == "__main__":
+    main()
+    
