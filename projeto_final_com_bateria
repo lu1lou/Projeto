@@ -142,12 +142,256 @@ class Waiter:
                 self.position = self.circle.getCenter()
                 yield
 
+
+class Botoes :
+    #Classe para gerir as butoes
+    
+    def __init__(self, window):
+        self.window = window
+        self.info_box_drawn = False
+        self.info_box = None
+        self.info_text = None
+        self.battery_text = None
+    
+    def criar_botoes(self,window):
+        #Botão de saída
+        but_saida = Rectangle(Point(66, 0), Point(88, 10))
+        but_saida.setFill('red')
+        but_saida_txt = Text(Point(77, 5), "Sair")  
+        but_saida_txt.setSize(8)
+        
+        #Desenha o botão de sáida
+        but_saida.draw(self.window)
+        but_saida_txt.draw(self.window)
+        
+        #Botão para caixa de informação
+        but_info = Rectangle(Point(120, 0), Point(140, 10))
+        but_info.setFill("purple")
+        but_info.draw(self.window)
+        but_info_txt = Text(but_info.getCenter(), "Informação")
+        but_info_txt.setSize(8)
+        but_info_txt.setTextColor("white")
+        but_info_txt.draw(self.window)
+        
+        # Indicador de bateria
+        self.battery_text = Text(Point(30, 5), "Bateria: 100%")
+        self.battery_text.setSize(8)
+        self.battery_text.draw(self.window)
+        
+    def caixa_info(self, window):
+        #Desenhar o caixa de informação
+        info_caixa = Rectangle(Point(50, 90), Point(100, 60))
+        info_txt = Text(info_caixa.getCenter(),
+                         "LeMec 2024/2025\n"
+                         "ist1114617 - Diogo Chen\n"
+                         "ist1114863 - Luis Tenreiro\n"
+                         "Grupo - 43\n"
+        )
+        info_caixa.setFill("orange")
+        info_caixa.setOutline("black")
+        info_txt.setSize(10)
+        #Verifica se uma caixa de informação já está visível na janela
+        info_caixa_drawn = False     
+   
+    def but_saida_clicked(self, click):
+       #Verifica se o botão de saída foi clicado
+       return 66 <= click.getX() <= 88 and 0 <= click.getY() <= 10
+       
+    def but_info_clicked(self, click):
+        #Verifica se o botão de informação foi clicado
+        return 120 <= click.getX() <= 140 and 0 <= click.getY() <= 10 
+    
+    def bateria_window(self, battery_level):
+        #Atualiza o display da bateria
+        if self.battery_text:
+            self.battery_text.setText(f"Bateria: {int(battery_level)}%")
+            if battery_level <= 20:
+                self.battery_text.setTextColor("red")
+            elif battery_level <= 50:
+                self.battery_text.setTextColor("orange") 
+            else:
+                self.battery_text.setTextColor("green")
+        
+
+class Restaurante:
+    #Classe principal para gerir o restaurante
+    
+    def __init__(self, filename="salaxx.txt"):
+        self.filename = filename
+        self.layout_data = None
+        self.window = None
+        self.butoes = None
+        self.waiter = None
+        self.obstaculos = []
+        self.movimento = []
+        self.delay_counter = 0
+
+    def create_window(self):
+        #Cria a janela principal
+        self.window = GraphWin("Layout do Restaurante", 500, 500)
+        self.window.setBackground("lightgray")
+        self.window.setCoords(0, 0, 150, 150)
+        return self.window
+    
+    def inicializar(self):
+        #Inicializa todos os componentes
+        # Carregar layout
+        self.layout_data = abrir_ficheiro(self.filename)
+        if not self.layout_data:
+            return False
+            
+        # Criar janela
+        self.create_window()
+        
+        # Criar UI manager
+        self.butoes = Botoes(self.window)
+        self.butoes.criar_botoes(self.window)
+        
+        # Desenhar layout
+        draw_layout(self.window, self.layout_data)
+        
+        # Criar waiter
+        self.waiter = Waiter(Point(140, 147), 3)
+        self.waiter.draw(self.window)
+        
+        return True
+        
+    def table_click(self, ponto_table):
+        #Lida com cliques em mesas
+        if self.movimento:  # Já em movimento
+            return
+        # Verificar se precisa recarregar
+        if self.waiter.battery.bateria_baixa():
+            self.voltar_para_recarregar()
+            return
+        
+        posição_atual = self.waiter.getCenter()
+        paths =caminhos(ponto_table, posição_atual)
+        
+        if paths[0] is None:  # Mesa não encontrada
+            return
+        
+        caminho_mesa, caminho_pt_entrega, caminho_volta,  = paths
+        
+        # Adicionar movimentos à fila
+        self.movimento.append(self.waiter.move_waiter(caminho_mesa, self.window))
+        self.movimento.append("pausa")
+        self.movimento.append(self.waiter.move_waiter(caminho_pt_entrega, self.window))
+        self.movimento.append("pausa")
+        self.movimento.append(self.waiter.move_waiter(list(reversed(caminho_pt_entrega)), self.window))
+        self.movimento.append("pausa")
+        self.movimento.append(self.waiter.move_waiter(caminho_volta, self.window))
+        
+    def voltar_para_recarregar(self):
+        #Força o waiter a voltar ao dock para recarregar
+        posição_atual = self.waiter.getCenter()
+        caminho_recarga = [posição_atual, Point(140, 135), Point(140, 147)]  # Define the path to the dock
+        self.movimento = []  # Limpar movimentos existentes
+        self.movimento.append(self.waiter.move_waiter(caminho_recarga, self.window))
+        self.movimento.append("recarga")
+        
+    def atualização_obs(self):
+        #Remove obstáculos expirados
+        for obs in self.obstaculos[:]:
+            if obs.expirado():
+                obs.undraw()
+                self.obstaculos.remove(obs)
+                
+    def atualização_mov(self):
+        #Atualiza o movimento do waiter
+        if not self.movimento:
+            return
+            
+        current = self.movimento[0]
+        
+        if current == "pausa":
+            if self.delay_counter == 0:
+                self.delay_counter = int(2 / 0.02)  # 2 segundos
+            if self.delay_counter > 0:
+                self.delay_counter -= 1
+            if self.delay_counter == 0:
+                self.movimento.pop(0)
+        
+        elif current == "recarga":
+            if self.delay_counter == 0:
+                self.delay_counter = int(3 / 0.02)  # 3 segundos para recarregar"
+            if self.delay_counter > 0:
+                self.delay_counter -= 1
+            if self.delay_counter == 0:
+                self.waiter.battery.recarga()
+                self.waiter.mudança_cor()
+                self.movimento.pop(0)
+                
+        else:
+            try:
+                colisão = any(obs.colisão(self.waiter) for obs in self.obstaculos)
+                if colisão:
+                    if self.delay_counter == 0:
+                        self.delay_counter = int(2 / 0.02)  # 2 segundos
+                    elif self.delay_counter > 0:
+                        self.delay_counter -= 1
+                else:
+                    if self.delay_counter > 0:
+                        self.delay_counter -= 1
+                    else:
+                        result = next(current)
+                        if result == "battery_empty":
+                            # Limpar movimentos atuais
+                            self.movimento = []
+                            self.voltar_para_recarregar()
+                        elif result == "completed":
+                            self.movimento.pop(0)
+            except StopIteration:
+                self.movimento.pop(0)
+                
+    def run(self):
+        #Executa o programa principal
+        if not self.inicializar():
+            return
+            
+        # Loop principal
+        while True:
+            # Atualizar obstáculos
+            self.atualização_obs()
+            
+            # Atualizar movimento
+            self.atualização_mov()
+            
+            # # Atualizar display da bateria
+            self.butoes.bateria_window(self.waiter.battery.nível())
+            
+            # Verificar cliques
+            click = self.window.checkMouse()
+            if click:
+                if self.butoes.but_saida_clicked(click):
+                    self.window.close()
+                    break
+                elif self.butoes.but_info_clicked(click):
+                    self.butoes.caixa_info(self.window)
+                    continue
+                    
+                # Verificar clique em mesa
+                clicked_table = None
+                for table in self.layout_data['tables']:
+                    if table.ponto_dentro(click):
+                        clicked_table = table.name
+                        break
+                        
+                if clicked_table:
+                    self.table_click(clicked_table)
+                else:
+                    # Criar obstáculo
+                    new_obs = Obstaculo(self.window, click)
+                    self.obstaculos.append(new_obs)
+                    
+            time.sleep(0.02)
+
 def caminhos (ponto_table,posição_atual):
     """Classe para gerir os caminhos do waiter"""
     
     #caminho até zona de saida de pratos
     caminho_mesa = [posição_atual,          # Onde o robot está agora
-                       Point(140, 135), ]    # sair de dock
+                       Point(140, 135), ]    # sair de doock
     caminho_pt_entrega = [] # Continuar de onde parou
     caminho_volta = [] #caminho de volta
     
@@ -317,250 +561,6 @@ def draw_layout(window, layout_data):
     # Desenhar mesas
     for table in layout_data["tables"]:
         table.draw(window)
-        
-class Butoes :
-    #Classe para gerir as butoes
-    
-    def __init__(self, window):
-        self.window = window
-        self.info_box_drawn = False
-        self.info_box = None
-        self.info_text = None
-        self.battery_text = None
-    
-    def criar_butoes(self,window):
-        #Botão de saída
-        but_saida = Rectangle(Point(66, 0), Point(88, 10))
-        but_saida.setFill('red')
-        but_saida_txt = Text(Point(77, 5), "Sair")  
-        but_saida_txt.setSize(8)
-        
-        #Desenha o botão de sáida
-        but_saida.draw(self.window)
-        but_saida_txt.draw(self.window)
-        
-        #Botão para caixa de informação
-        but_info = Rectangle(Point(120, 0), Point(140, 10))
-        but_info.setFill("purple")
-        but_info.draw(self.window)
-        but_info_txt = Text(but_info.getCenter(), "Informação")
-        but_info_txt.setSize(8)
-        but_info_txt.setTextColor("white")
-        but_info_txt.draw(self.window)
-        
-        # Indicador de bateria
-        self.battery_text = Text(Point(30, 5), "Bateria: 100%")
-        self.battery_text.setSize(8)
-        self.battery_text.draw(self.window)
-        
-    def caixa_info(self, window):
-        #Desenhar o caixa de informação
-        info_caixa = Rectangle(Point(50, 90), Point(100, 60))
-        info_txt = Text(info_caixa.getCenter(),
-                         "LeMec 2024/2025\n"
-                         "ist1114617 - Diogo Chen\n"
-                         "ist1114863 - Luis Tenreiro\n"
-                         "Grupo - 43\n"
-        )
-        info_caixa.setFill("orange")
-        info_caixa.setOutline("black")
-        info_txt.setSize(10)
-        #Verifica se uma caixa de informação já está visível na janela
-        info_caixa_drawn = False     
-   
-    def but_saida_clicked(self, click):
-       #Verifica se o botão de saída foi clicado
-       return 66 <= click.getX() <= 88 and 0 <= click.getY() <= 10
-       
-    def but_info_clicked(self, click):
-        #Verifica se o botão de informação foi clicado
-        return 120 <= click.getX() <= 140 and 0 <= click.getY() <= 10 
-    
-    def bateria_window(self, battery_level):
-        #Atualiza o display da bateria
-        if self.battery_text:
-            self.battery_text.setText(f"Bateria: {int(battery_level)}%")
-            if battery_level <= 20:
-                self.battery_text.setTextColor("red")
-            elif battery_level <= 50:
-                self.battery_text.setTextColor("orange") 
-            else:
-                self.battery_text.setTextColor("green")
-        
-
-class Restaurante:
-    #Classe principal para gerir o restaurante
-    
-    def __init__(self, filename="salaxx.txt"):
-        self.filename = filename
-        self.layout_data = None
-        self.window = None
-        self.butoes = None
-        self.waiter = None
-        self.obstaculos = []
-        self.movimento = []
-        self.delay_counter = 0
-
-    def create_window(self):
-        #Cria a janela principal
-        self.window = GraphWin("Layout do Restaurante", 500, 500)
-        self.window.setBackground("lightgray")
-        self.window.setCoords(0, 0, 150, 150)
-        return self.window
-    
-    def inicializar(self):
-        #Inicializa todos os componentes
-        # Carregar layout
-        self.layout_data = abrir_ficheiro(self.filename)
-        if not self.layout_data:
-            return False
-            
-        # Criar janela
-        self.create_window()
-        
-        # Criar UI manager
-        self.butoes = Butoes(self.window)
-        self.butoes.criar_butoes(self.window)
-        
-        # Desenhar layout
-        draw_layout(self.window, self.layout_data)
-        
-        # Criar waiter
-        self.waiter = Waiter(Point(140, 147), 3)
-        self.waiter.draw(self.window)
-        
-        return True
-        
-    def table_click(self, ponto_table):
-        #Lida com cliques em mesas
-        if self.movimento:  # Já em movimento
-            return
-        # Verificar se precisa recarregar
-        if self.waiter.battery.bateria_baixa():
-            self.voltar_para_recarregar()
-            return
-        
-        posição_atual = self.waiter.getCenter()
-        paths =caminhos(ponto_table, posição_atual)
-        
-        if paths[0] is None:  # Mesa não encontrada
-            return
-        
-        caminho_mesa, caminho_pt_entrega, caminho_volta,  = paths
-        
-        # Adicionar movimentos à fila
-        self.movimento.append(self.waiter.move_waiter(caminho_mesa, self.window))
-        self.movimento.append("pausa")
-        self.movimento.append(self.waiter.move_waiter(caminho_pt_entrega, self.window))
-        self.movimento.append("pausa")
-        self.movimento.append(self.waiter.move_waiter(list(reversed(caminho_pt_entrega)), self.window))
-        self.movimento.append("pausa")
-        self.movimento.append(self.waiter.move_waiter(caminho_volta, self.window))
-        
-    def voltar_para_recarregar(self):
-        #Força o waiter a voltar ao dock para recarregar
-        posição_atual = self.waiter.getCenter()
-        caminho_recarga = [posição_atual, Point(140, 135), Point(140, 147)]  # Define the path to the dock
-        self.movimento = []  # Limpar movimentos existentes
-        self.movimento.append(self.waiter.move_waiter(caminho_recarga, self.window))
-        self.movimento.append("recarga")
-        
-    def atualização_obs(self):
-        #Remove obstáculos expirados
-        for obs in self.obstaculos[:]:
-            if obs.expirado():
-                obs.undraw()
-                self.obstaculos.remove(obs)
-                
-    def atualização_mov(self):
-        #Atualiza o movimento do waiter
-        if not self.movimento:
-            return
-            
-        current = self.movimento[0]
-        
-        if current == "pausa":
-            if self.delay_counter == 0:
-                self.delay_counter = int(2 / 0.02)  # 2 segundos
-            if self.delay_counter > 0:
-                self.delay_counter -= 1
-            if self.delay_counter == 0:
-                self.movimento.pop(0)
-        
-        elif current == "recarga":
-            if self.delay_counter == 0:
-                self.delay_counter = int(3 / 0.02)  # 3 segundos para recarregar"
-            if self.delay_counter > 0:
-                self.delay_counter -= 1
-            if self.delay_counter == 0:
-                self.waiter.battery.recarga()
-                self.waiter.mudança_cor()
-                self.movimento.pop(0)
-                
-        else:
-            try:
-                colisão = any(obs.colisão(self.waiter) for obs in self.obstaculos)
-                if colisão:
-                    if self.delay_counter == 0:
-                        self.delay_counter = int(2 / 0.02)  # 2 segundos
-                    elif self.delay_counter > 0:
-                        self.delay_counter -= 1
-                else:
-                    if self.delay_counter > 0:
-                        self.delay_counter -= 1
-                    else:
-                        result = next(current)
-                        if result == "battery_empty":
-                            # Limpar movimentos atuais
-                            self.movimento = []
-                            self.voltar_para_recarregar()
-                        elif result == "completed":
-                            self.movimento.pop(0)
-            except StopIteration:
-                self.movimento.pop(0)
-                
-    def run(self):
-        #Executa o programa principal
-        if not self.inicializar():
-            return
-            
-        # Loop principal
-        while True:
-            # Atualizar obstáculos
-            self.atualização_obs()
-            
-            # Atualizar movimento
-            self.atualização_mov()
-            
-            # # Atualizar display da bateria
-            self.butoes.bateria_window(self.waiter.battery.nível())
-            
-            # Verificar cliques
-            click = self.window.checkMouse()
-            if click:
-                if self.butoes.but_saida_clicked(click):
-                    self.window.close()
-                    break
-                elif self.butoes.but_info_clicked(click):
-                    self.butoes.caixa_info(self.window)
-                    continue
-                    
-                # Verificar clique em mesa
-                clicked_table = None
-                for table in self.layout_data['tables']:
-                    if table.ponto_dentro(click):
-                        clicked_table = table.name
-                        break
-                        
-                if clicked_table:
-                    self.table_click(clicked_table)
-                else:
-                    # Criar obstáculo
-                    new_obs = Obstaculo(self.window, click)
-                    self.obstaculos.append(new_obs)
-                    
-            time.sleep(0.02)
-
 
 def main():
     #Executar o programa
