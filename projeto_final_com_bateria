@@ -147,7 +147,7 @@ def caminhos (ponto_table,posição_atual):
     
     #caminho até zona de saida de pratos
     caminho_mesa = [posição_atual,          # Onde o robot está agora
-                       Point(140, 135), ]    # sair de doock
+                       Point(140, 135), ]    # sair de dock
     caminho_pt_entrega = [] # Continuar de onde parou
     caminho_volta = [] #caminho de volta
     
